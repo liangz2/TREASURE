@@ -14,13 +14,19 @@
 int fd = -1;
 int sid = 0;
 int channel = 0;
+int blinkWait = -1;
 int power = 0;
+int currentLight = -1;
 char *outBuf, *inBuf;
 
 #define ROLE        "H"
 #define MSG_SIZE    26
 #define PAC_SIZE    30
 #define TREASURE    "T"
+#define RELAY       "R"
+#define T_SIGNAL    1
+#define R_SIGNAL    2
+#define NO_SIGNAL   0
 
 fsm sender {
   address packet;
@@ -45,15 +51,31 @@ fsm receiver {
 
   state RECEIVED:
     if (strncmp(inBuf + 2, TREASURE, 1) == 0) {
-      ser_out (RECEIVED, "received signal from treasure\n");
-      leds (1, 2);
+      if (currentLight != T_SIGNAL) {
+	currentLight = T_SIGNAL;
+	leds (currentLight, 1);
+      }
     }
 
     proceed RECEIVING;
 }
 
-void setBlinkRate () {
-  
+fsm blinker {
+  state ON:
+    if (blinkWait < 0)
+      leds (NO_SIGNAL, 0);
+    else
+      leds (currentLight, 1);
+    
+    delay (blinkWait, off)
+      
+}
+
+void setBlinkRate (int ss) {
+  if (ss >= 100)
+    blinkWait = (4000 / ss) * (4000 / ss);
+  else
+    blinkWait = (4000 / ss) * (4000 / (200 - ss));
 }
 
 fsm root {
