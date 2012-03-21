@@ -31,7 +31,6 @@ fsm sender {
     tcv_endp (packet);
 
   state SENT:
-    diag ("%s\r", outBuf + 2);
     delay (2048, SENDSIGNAL);
     release;
 }
@@ -79,6 +78,8 @@ fsm root {
     tcv_control (fd, PHYSOPT_TXON, NULL);
     tcv_control (fd, PHYSOPT_RXON, NULL);
     
+    leds (1, 2);
+
     delay (rnd() % 2048, STARTUP);
     release;
 

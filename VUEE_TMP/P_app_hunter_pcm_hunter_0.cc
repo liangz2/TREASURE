@@ -23,6 +23,10 @@
 
 
 
+
+
+
+
 void setBlinkRate (int);
 
 void setBlinkRate (int ss) {
@@ -35,16 +39,16 @@ void setBlinkRate (int ss) {
 
 
 #define packet (((__NT_hunter*)TheStation)->__vattr_sender_packet)
-# 43 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
+# 47 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
 sender_hunter::perform { _pp_enter_ (); 
 
-# 43 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
+# 47 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
 
   
 
   transient SENDSIGNAL: {
-    packet = tcv_wnp (SENDSIGNAL, fd, 30);
-    tcv_write (packet, outBuf, 30);
+    packet = tcv_wnp (SENDSIGNAL, fd, 20);
+    tcv_write (packet, outBuf, 10);
     tcv_endp (packet);
 
   } transient SENT: {
@@ -56,17 +60,27 @@ sender_hunter::perform { _pp_enter_ ();
 
 #define packet (((__NT_hunter*)TheStation)->__vattr_receiver_packet)
 #define ss (((__NT_hunter*)TheStation)->__vattr_receiver_ss)
-# 57 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
+#define i (((__NT_hunter*)TheStation)->__vattr_receiver_i)
+#define n (((__NT_hunter*)TheStation)->__vattr_receiver_n)
+#define c (((__NT_hunter*)TheStation)->__vattr_receiver_c)
+# 61 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
 receiver_hunter::perform { _pp_enter_ (); 
 
-# 57 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
+# 61 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
 
+  
+  
+  
   
   
   transient RECEIVING: {
+
     packet = tcv_rnp (RECEIVING, fd);
-    tcv_read (packet, inBuf, 30);
+    n = tcv_left (packet);
+    tcv_read (packet, inBuf, n);
     tcv_endp (packet);
+    proceed RECEIVED;
+
 
   } transient RECEIVED: {
     if (strncmp(inBuf + 2, "T", 1) == 0) {
@@ -75,32 +89,45 @@ receiver_hunter::perform { _pp_enter_ ();
  do { ( (((PicOSNode*)TheStation)->ledsm == 0) ? _no_module_ ("LEDS", "leds") : 1 ); ((PicOSNode*)TheStation)->ledsm->leds_op (currentLight, 1); } while (0);
       }
 
-      ss = atoi (inBuf + 3);
 
-      if (ss > 0 && currentSS != ss)
- setBlinkRate (ss);
+
+
+
+
+
+      for (i = 0; i < n; i++) {
+ diag ("%d", inBuf[i]);
+      }
 
       proceed RECEIVING;
     }
 
   } transient OUT_PUT: {
-    ser_outf (OUT_PUT, "%d\n", blinkWait);
+    ser_outf (OUT_PUT, "%d\n\r", n);
+    proceed RECEIVING;
+
+  } transient NOSIGNAL: {
+    blinkWait = 0;
     proceed RECEIVING;
 }}
 #undef packet
 #undef ss
-# 83 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
+#undef i
+#undef n
+#undef c
+# 103 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
 
 
 
-# 85 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
+# 105 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
 blinker_hunter::perform { _pp_enter_ (); 
 
-# 85 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
+# 105 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
 
   transient TURN_ON: {
-  if (blinkWait <= 0) {
-      do { ( (((PicOSNode*)TheStation)->ledsm == 0) ? _no_module_ ("LEDS", "leds") : 1 ); ((PicOSNode*)TheStation)->ledsm->leds_op (0, 0); } while (0); do { ( (((PicOSNode*)TheStation)->ledsm == 0) ? _no_module_ ("LEDS", "leds") : 1 ); ((PicOSNode*)TheStation)->ledsm->leds_op (1, 0); } while (0); do { ( (((PicOSNode*)TheStation)->ledsm == 0) ? _no_module_ ("LEDS", "leds") : 1 ); ((PicOSNode*)TheStation)->ledsm->leds_op (2, 0); } while (0);
+
+    if (blinkWait <= 0) {
+      do { do { ( (((PicOSNode*)TheStation)->ledsm == 0) ? _no_module_ ("LEDS", "leds") : 1 ); ((PicOSNode*)TheStation)->ledsm->leds_op (0, 0); } while (0); do { ( (((PicOSNode*)TheStation)->ledsm == 0) ? _no_module_ ("LEDS", "leds") : 1 ); ((PicOSNode*)TheStation)->ledsm->leds_op (1, 0); } while (0); do { ( (((PicOSNode*)TheStation)->ledsm == 0) ? _no_module_ ("LEDS", "leds") : 1 ); ((PicOSNode*)TheStation)->ledsm->leds_op (2, 0); } while (0); } while (0);
       delay (512, TURN_ON);
       release;
     }
@@ -117,23 +144,23 @@ blinker_hunter::perform { _pp_enter_ ();
 }}
 
 
-# 104 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
+# 125 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
 root_hunter::perform { _pp_enter_ (); 
 
-# 104 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
+# 125 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
 
   transient INIT: {
-    outBuf = (char*) (((PicOSNode*)TheStation)->memAlloc (26, (word)(26)));
-    inBuf = (char*) (((PicOSNode*)TheStation)->memAlloc (26, (word)(26)));
+    outBuf = (char*) (((PicOSNode*)TheStation)->memAlloc (10, (word)(10)));
+    inBuf = (char*) (((PicOSNode*)TheStation)->memAlloc (20, (word)(20)));
 
     if (outBuf == 0 || inBuf == 0)
       diag ("fail to allocate memory for outBuf or inBuf");
 
-    bzero (outBuf, 26);
+    bzero (outBuf, 10);
+    bzero (inBuf, 20);
     form (outBuf + 2, "H", 1);
-    form (outBuf + 3, "%s", "hunter is here");
 
-    phys_cc1100 (0, 30);
+    phys_cc1100 (0, 20);
     tcv_plug (0, &plug_null);
     fd = tcv_open ((-1), 0, 0);
 
@@ -141,7 +168,7 @@ root_hunter::perform { _pp_enter_ ();
       diag ("failed to obtain file descriptor");
       finish;
     }
-
+    diag ("on");
     tcv_control (fd, 10, (address) &sid);
     tcv_control (fd, 18, (address) &channel);
     tcv_control (fd, 7, (address) &power);

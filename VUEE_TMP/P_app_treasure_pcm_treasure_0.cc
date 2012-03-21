@@ -21,57 +21,56 @@ sender_treasure::perform { _pp_enter_ ();
 # 26 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 
   
-
   transient SENDSIGNAL: {
-    packet = tcv_wnp (SENDSIGNAL, fd, 30);
-    tcv_write (packet, outBuf, 30 - 2);
+    packet = tcv_wnp (SENDSIGNAL, fd, 20);
+    tcv_write (packet, outBuf, 10);
     tcv_endp (packet);
 
   } transient SENT: {
-    ser_outf (SENT, "sent: %s\n", outBuf + 2);
     delay (2048, SENDSIGNAL);
     release;
 }}
 #undef packet
 
 #define packet (((__NT_treasure*)TheStation)->__vattr_receiver_packet)
-# 40 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
+# 38 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 receiver_treasure::perform { _pp_enter_ (); 
 
-# 40 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
+# 38 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 
   
   transient RECEIVING: {
     packet = tcv_rnp (RECEIVING, fd);
-    tcv_read (packet, inBuf, 30);
+    tcv_read (packet, inBuf, 20);
     tcv_endp (packet);
 
   } transient RECEIVED: {
     if (strncmp(inBuf + 2, "H", 1) == 0) {
       ser_out (RECEIVED, "received signal from hunter\n");
-      do { ( (((PicOSNode*)TheStation)->ledsm == 0) ? _no_module_ ("LEDS", "leds") : 1 ); ((PicOSNode*)TheStation)->ledsm->leds_op (0, 2); } while (0);
+      do { ( (((PicOSNode*)TheStation)->ledsm == 0) ? _no_module_ ("LEDS", "leds") : 1 ); ((PicOSNode*)TheStation)->ledsm->leds_op (2, 2); } while (0);
     }
     proceed RECEIVING;
 }}
 #undef packet
 
-# 55 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
+# 53 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 root_treasure::perform { _pp_enter_ (); 
 
-# 55 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
+# 53 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 
   transient INIT: {
-    outBuf = (char*) (((PicOSNode*)TheStation)->memAlloc (26, (word)(26)));
-    inBuf = (char*) (((PicOSNode*)TheStation)->memAlloc (26, (word)(26)));
+    outBuf = (char*) (((PicOSNode*)TheStation)->memAlloc (10, (word)(10)));
+    inBuf = (char*) (((PicOSNode*)TheStation)->memAlloc (20, (word)(20)));
 
     if (outBuf == 0 || inBuf == 0)
       diag ("fail to allocate memory for outBuf or inBuf");
 
-    bzero (outBuf, 26);
+    bzero (outBuf, 10);
+    bzero (inBuf, 20);
     form (outBuf + 2, "T", 1);
-    form (outBuf + 3, "%d", ss);
 
-    phys_cc1100 (0, 30);
+
+    phys_cc1100 (0, 20);
     tcv_plug (0, &plug_null);
     fd = tcv_open ((-1), 0, 0);
 
@@ -85,6 +84,8 @@ root_treasure::perform { _pp_enter_ ();
     tcv_control (fd, 7, (address) &power);
     tcv_control (fd, 1, 0);
     tcv_control (fd, 4, 0);
+
+    do { ( (((PicOSNode*)TheStation)->ledsm == 0) ? _no_module_ ("LEDS", "leds") : 1 ); ((PicOSNode*)TheStation)->ledsm->leds_op (1, 2); } while (0);
 
     delay (rnd() % 2048, STARTUP);
     release;

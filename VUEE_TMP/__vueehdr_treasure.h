@@ -26,7 +26,7 @@ char *__vattr_outBuf,*__vattr_inBuf;
 # 27 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 address __vattr_sender_packet;
 
-# 41 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
+# 39 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 address __vattr_receiver_packet;
 
 char __attr_init_end [0];

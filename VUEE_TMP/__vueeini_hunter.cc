@@ -15,6 +15,8 @@ __vattr_power=0 ;
 __vattr_currentSS=0 ;
 # 20 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
 __vattr_currentLight=-1 ;
+# 63 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_hunter.cc"
+__vattr_receiver_ss=0 ;
 __praxis_starter ();
 }
 void __build__hunternode (data_no_t *nddata) { create __NT_hunter (nddata); }
