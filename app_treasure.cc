@@ -20,7 +20,7 @@ char *outBuf, *inBuf;
 
 #define ROLE        "T"
 #define MSG_SIZE    10
-#define PAC_SIZE    15
+#define PAC_SIZE    20
 #define HUNTER      "H"
 
 fsm sender {

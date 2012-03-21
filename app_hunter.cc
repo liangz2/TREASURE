@@ -22,7 +22,7 @@ char *outBuf, *inBuf;
 
 #define ROLE        "H"
 #define MSG_SIZE    10
-#define PAC_SIZE    15
+#define PAC_SIZE    20
 #define TREASURE    "T"
 #define RELAY       "R"
 #define T_SIGNAL    1
@@ -104,7 +104,7 @@ fsm receiver {
 
 fsm blinker {
   initial state TURN_ON:
-  //diag ("%d", blinkWait);
+  //   diag ("%d", blinkWait);
     if (blinkWait <= 0) {
       LIGHTS_OFF;
       delay (512, TURN_ON);
@@ -142,7 +142,7 @@ fsm root {
       diag ("failed to obtain file descriptor");
       finish;
     }
-    
+    diag ("on");
     tcv_control (fd, PHYSOPT_SETSID, (address) &sid);
     tcv_control (fd, PHYSOPT_SETCHANNEL, (address) &channel);
     tcv_control (fd, PHYSOPT_SETPOWER, (address) &power);
