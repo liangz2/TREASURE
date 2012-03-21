@@ -1,5 +1,5 @@
-/* This is the treasure program that are supposed to be hidden
- * somewhere in one of the buildings and keeps sending out
+/* This is the hunter program that are used to find the  hidden
+ * treasure in one of the buildings and keeps sending out
  * signals indicating its location
  */
 
@@ -14,8 +14,9 @@
 int fd = -1;
 int sid = 0;
 int channel = 0;
-int blinkWait = -1;
+int blinkWait = 0;
 int power = 0;
+int currentSS = 0;
 int currentLight = -1;
 char *outBuf, *inBuf;
 
@@ -27,55 +28,77 @@ char *outBuf, *inBuf;
 #define T_SIGNAL    1
 #define R_SIGNAL    2
 #define NO_SIGNAL   0
+#define LIGHTS_OFF  leds (0, 0); leds (1, 0); leds (2, 0)
+
+void setBlinkRate (int);
+
+void setBlinkRate (int ss) {
+  currentSS = ss;
+  if (ss >= 100)
+    blinkWait = (4000 / ss) * (4000 / ss);
+  else
+    blinkWait = (4000 / ss) * (4000 / (200 - ss));
+}
 
 fsm sender {
   address packet;
 
   initial state SENDSIGNAL:
     packet = tcv_wnp (SENDSIGNAL, fd, PAC_SIZE);
-    tcv_write (packet, outBuf, PAC_SIZE - 2);
+    tcv_write (packet, outBuf, PAC_SIZE);
     tcv_endp (packet);
 
   state SENT:
-    ser_outf (SENT, "sent: %s\n", outBuf + 2);
+    //ser_outf (SENT, "sent: %s\n", outBuf + 2);
     delay (2048, SENDSIGNAL);
     release;
 }
 
 fsm receiver {
   address packet;
+  int ss;
   initial state RECEIVING:
     packet = tcv_rnp (RECEIVING, fd);
     tcv_read (packet, inBuf, PAC_SIZE);
     tcv_endp (packet);
-
+    
   state RECEIVED:
     if (strncmp(inBuf + 2, TREASURE, 1) == 0) {
       if (currentLight != T_SIGNAL) {
 	currentLight = T_SIGNAL;
 	leds (currentLight, 1);
       }
+      // get the signal strength
+      ss = atoi (inBuf + 3);
+      // change the stored signal strength if different
+      if (ss > 0 && currentSS != ss)
+	setBlinkRate (ss);
+            
+      proceed RECEIVING;
     }
 
+  state OUT_PUT:
+    ser_outf (OUT_PUT, "%d\n", blinkWait);
     proceed RECEIVING;
 }
 
 fsm blinker {
-  state ON:
-    if (blinkWait < 0)
-      leds (NO_SIGNAL, 0);
-    else
+  initial state TURN_ON:
+  if (blinkWait <= 0) {
+      LIGHTS_OFF;
+      delay (512, TURN_ON);
+      release;
+    }
+    else {
       leds (currentLight, 1);
-    
-    delay (blinkWait, off)
-      
-}
+      delay (blinkWait, TURN_OFF);
+      release;
+    }
 
-void setBlinkRate (int ss) {
-  if (ss >= 100)
-    blinkWait = (4000 / ss) * (4000 / ss);
-  else
-    blinkWait = (4000 / ss) * (4000 / (200 - ss));
+  state TURN_OFF:
+    leds (currentLight, 0);
+    delay (blinkWait, TURN_ON);
+    release;
 }
 
 fsm root {
@@ -111,6 +134,7 @@ fsm root {
   state STARTUP:
     runfsm sender;
     runfsm receiver;
+    runfsm blinker;
 
     finish;
 }

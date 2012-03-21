@@ -15,6 +15,7 @@ int fd = -1;
 int sid = 0;
 int channel = 0;
 int power = 0;
+int ss = 250;
 char *outBuf, *inBuf;
 
 #define ROLE        "T"
@@ -61,7 +62,7 @@ fsm root {
 
     bzero (outBuf, MSG_SIZE);
     form (outBuf + 2, ROLE, 1);
-    form (outBuf + 3, "%s", "treasure is here");
+    form (outBuf + 3, "%d", ss);
 
     phys_cc1100 (0, PAC_SIZE);
     tcv_plug (0, &plug_null);

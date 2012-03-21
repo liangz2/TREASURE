@@ -5,25 +5,28 @@
 #include "board.h"
 station __NT_treasure : PicOSNode { 
 char __attr_init_origin [0];
-# 14 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/cmpt364_project/app_treasure.cc"
+# 14 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 int __vattr_fd;
 
-# 15 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/cmpt364_project/app_treasure.cc"
+# 15 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 int __vattr_sid;
 
-# 16 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/cmpt364_project/app_treasure.cc"
+# 16 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 int __vattr_channel;
 
-# 17 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/cmpt364_project/app_treasure.cc"
+# 17 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 int __vattr_power;
 
-# 18 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/cmpt364_project/app_treasure.cc"
+# 18 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
+int __vattr_ss;
+
+# 19 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 char *__vattr_outBuf,*__vattr_inBuf;
 
-# 26 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/cmpt364_project/app_treasure.cc"
+# 27 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 address __vattr_sender_packet;
 
-# 40 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/cmpt364_project/app_treasure.cc"
+# 41 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 address __vattr_receiver_packet;
 
 char __attr_init_end [0];

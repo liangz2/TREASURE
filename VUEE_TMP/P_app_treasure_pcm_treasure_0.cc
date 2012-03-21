@@ -1,10 +1,11 @@
 #include "__vueehdr_treasure.h"
-# 13 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/cmpt364_project/app_treasure.cc"
+# 13 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 
 #define fd (((__NT_treasure*)TheStation)->__vattr_fd)
 #define sid (((__NT_treasure*)TheStation)->__vattr_sid)
 #define channel (((__NT_treasure*)TheStation)->__vattr_channel)
 #define power (((__NT_treasure*)TheStation)->__vattr_power)
+#define ss (((__NT_treasure*)TheStation)->__vattr_ss)
 #define outBuf (((__NT_treasure*)TheStation)->__vattr_outBuf)
 #define inBuf (((__NT_treasure*)TheStation)->__vattr_inBuf)
 
@@ -14,10 +15,10 @@
 
 
 #define packet (((__NT_treasure*)TheStation)->__vattr_sender_packet)
-# 25 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/cmpt364_project/app_treasure.cc"
+# 26 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 sender_treasure::perform { _pp_enter_ (); 
 
-# 25 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/cmpt364_project/app_treasure.cc"
+# 26 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 
   
 
@@ -34,10 +35,10 @@ sender_treasure::perform { _pp_enter_ ();
 #undef packet
 
 #define packet (((__NT_treasure*)TheStation)->__vattr_receiver_packet)
-# 39 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/cmpt364_project/app_treasure.cc"
+# 40 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 receiver_treasure::perform { _pp_enter_ (); 
 
-# 39 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/cmpt364_project/app_treasure.cc"
+# 40 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 
   
   transient RECEIVING: {
@@ -54,10 +55,10 @@ receiver_treasure::perform { _pp_enter_ ();
 }}
 #undef packet
 
-# 54 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/cmpt364_project/app_treasure.cc"
+# 55 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 root_treasure::perform { _pp_enter_ (); 
 
-# 54 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/cmpt364_project/app_treasure.cc"
+# 55 "/home/zhengyi/Documents/cmpt364/PICOS/Apps/TREASURE/app_treasure.cc"
 
   transient INIT: {
     outBuf = (char*) (((PicOSNode*)TheStation)->memAlloc (26, (word)(26)));
@@ -68,7 +69,7 @@ root_treasure::perform { _pp_enter_ ();
 
     bzero (outBuf, 26);
     form (outBuf + 2, "T", 1);
-    form (outBuf + 3, "%s", "treasure is here");
+    form (outBuf + 3, "%d", ss);
 
     phys_cc1100 (0, 30);
     tcv_plug (0, &plug_null);
