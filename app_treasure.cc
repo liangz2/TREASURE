@@ -19,20 +19,19 @@ int ss = 250;
 char *outBuf, *inBuf;
 
 #define ROLE        "T"
-#define MSG_SIZE    26
-#define PAC_SIZE    30
+#define MSG_SIZE    10
+#define PAC_SIZE    15
 #define HUNTER      "H"
 
 fsm sender {
   address packet;
-
   initial state SENDSIGNAL:
     packet = tcv_wnp (SENDSIGNAL, fd, PAC_SIZE);
-    tcv_write (packet, outBuf, PAC_SIZE - 2);
+    tcv_write (packet, outBuf, MSG_SIZE);
     tcv_endp (packet);
 
   state SENT:
-    ser_outf (SENT, "sent: %s\n", outBuf + 2);
+    diag ("%s\r", outBuf + 2);
     delay (2048, SENDSIGNAL);
     release;
 }
@@ -47,7 +46,7 @@ fsm receiver {
   state RECEIVED:
     if (strncmp(inBuf + 2, HUNTER, 1) == 0) {
       ser_out (RECEIVED, "received signal from hunter\n");
-      leds (0, 2);
+      leds (2, 2);
     }
     proceed RECEIVING;
 }
@@ -55,14 +54,15 @@ fsm receiver {
 fsm root {
   initial state INIT:
     outBuf = (char*) umalloc (MSG_SIZE);
-    inBuf = (char*) umalloc (MSG_SIZE);
+    inBuf = (char*) umalloc (PAC_SIZE);
 
     if (outBuf == NULL || inBuf == NULL)
       diag ("fail to allocate memory for outBuf or inBuf");
 
     bzero (outBuf, MSG_SIZE);
+    bzero (inBuf, PAC_SIZE);
     form (outBuf + 2, ROLE, 1);
-    form (outBuf + 3, "%d", ss);
+    //    form (outBuf + 3, "%d", ss);
 
     phys_cc1100 (0, PAC_SIZE);
     tcv_plug (0, &plug_null);
