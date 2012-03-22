@@ -15,7 +15,7 @@ int fd = -1;
 int sid = 0;
 int channel = 0;
 int blinkWait = 0;
-int power = 0;
+int power = 10;
 int currentSS = 0;
 int currentLight = -1;
 char *outBuf, *inBuf;
@@ -65,13 +65,13 @@ fsm receiver {
   int n;
   char c;
   initial state RECEIVING:
-  //delay (1024, NOSIGNAL);
+  delay (1024, NOSIGNAL);
     packet = tcv_rnp (RECEIVING, fd);
     n = tcv_left (packet);
     tcv_read (packet, inBuf, n);
     tcv_endp (packet);
     proceed RECEIVED;
-    //release;
+    release;
 
   state RECEIVED:
     if (strncmp(inBuf + 2, TREASURE, 1) == 0) {
@@ -86,8 +86,10 @@ fsm receiver {
       if (ss > 0 && currentSS != ss)
 	setBlinkRate (ss);
       */
-      for (i = 0; i < n; i++) {
-	diag ("%d", inBuf[i]);
+      for (i = n - 1; i < n; i++) {
+	word rssi = (unsigned char)inBuf[i];
+
+	diag ("%d", rssi);
       }
       
       proceed RECEIVING;
@@ -107,6 +109,7 @@ fsm blinker {
   //   diag ("%d", blinkWait);
     if (blinkWait <= 0) {
       LIGHTS_OFF;
+      leds (2, 1);
       delay (512, TURN_ON);
       release;
     }
@@ -117,7 +120,7 @@ fsm blinker {
     }
 
   state TURN_OFF:
-    leds (currentLight, 0);
+    LIGHTS_OFF;
     delay (blinkWait, TURN_ON);
     release;
 }
@@ -142,7 +145,7 @@ fsm root {
       diag ("failed to obtain file descriptor");
       finish;
     }
-    diag ("on");
+    
     tcv_control (fd, PHYSOPT_SETSID, (address) &sid);
     tcv_control (fd, PHYSOPT_SETCHANNEL, (address) &channel);
     tcv_control (fd, PHYSOPT_SETPOWER, (address) &power);

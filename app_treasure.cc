@@ -14,14 +14,23 @@
 int fd = -1;
 int sid = 0;
 int channel = 0;
-int power = 0;
+int power = 10;
 int ss = 250;
+int currentLight = -1;
 char *outBuf, *inBuf;
 
 #define ROLE        "T"
 #define MSG_SIZE    10
 #define PAC_SIZE    20
 #define HUNTER      "H"
+#define GREEN       1
+#define RED         2
+#define YELLOW      0
+#define LIGHTS_OFF  do {			\
+    leds (0, 0);				\
+    leds (1, 0);				\
+    leds (2, 0);				\
+  } while (0)
 
 fsm sender {
   address packet;
@@ -38,15 +47,27 @@ fsm sender {
 fsm receiver {
   address packet;
   initial state RECEIVING:
+    delay (3072, NOSIGNAL);
     packet = tcv_rnp (RECEIVING, fd);
     tcv_read (packet, inBuf, PAC_SIZE);
     tcv_endp (packet);
+    proceed RECEIVED;
+    release;
 
   state RECEIVED:
     if (strncmp(inBuf + 2, HUNTER, 1) == 0) {
-      ser_out (RECEIVED, "received signal from hunter\n");
-      leds (2, 2);
+      if (currentLight != RED) {
+	leds (currentLight, 0);
+	currentLight = RED;
+	leds (currentLight, 2);
+      }
     }
+    proceed RECEIVING;
+
+  state NOSIGNAL:
+    leds (currentLight, 0);
+    currentLight = GREEN;
+    leds (currentLight, 2);
     proceed RECEIVING;
 }
 
@@ -78,7 +99,8 @@ fsm root {
     tcv_control (fd, PHYSOPT_TXON, NULL);
     tcv_control (fd, PHYSOPT_RXON, NULL);
     
-    leds (1, 2);
+    currentLight = GREEN;
+    leds (currentLight, 2);
 
     delay (rnd() % 2048, STARTUP);
     release;
