@@ -26,8 +26,8 @@ char *outBuf, *inBuf;
 #define TREASURE    "T"
 #define RELAY       "R"
 #define T_SIGNAL    1
-#define R_SIGNAL    2
-#define NO_SIGNAL   0
+#define R_SIGNAL    0
+#define NO_SIGNAL   2
 #define LIGHTS_OFF  do {			\
     leds (0, 0);				\
     leds (1, 0);				\
@@ -36,12 +36,12 @@ char *outBuf, *inBuf;
 
 void setBlinkRate (int);
 
-void setBlinkRate (int ss) {
-  currentSS = ss;
-  if (ss >= 100)
-    blinkWait = (4000 / ss) * (4000 / ss);
+void setBlinkRate (int rssi) {
+  currentSS = rssi;
+  if (rssi >= 100)
+    blinkWait = (3600 / rssi) * (3600 / rssi);
   else
-    blinkWait = (4000 / ss) * (4000 / (200 - ss));
+    blinkWait = (4000 / rssi) * (4000 / (200 - rssi));
 }
 
 fsm sender {
@@ -52,20 +52,17 @@ fsm sender {
     tcv_write (packet, outBuf, MSG_SIZE);
     tcv_endp (packet);
 
-  state SENT:
-    //ser_outf (SENT, "sent: %s\n", outBuf + 2);
     delay (2048, SENDSIGNAL);
     release;
 }
 
 fsm receiver {
   address packet;
-  int ss = 0;
   int i;
   int n;
   char c;
   initial state RECEIVING:
-  delay (1024, NOSIGNAL);
+    delay (3072, NOSIGNAL);
     packet = tcv_rnp (RECEIVING, fd);
     n = tcv_left (packet);
     tcv_read (packet, inBuf, n);
@@ -76,24 +73,20 @@ fsm receiver {
   state RECEIVED:
     if (strncmp(inBuf + 2, TREASURE, 1) == 0) {
       if (currentLight != T_SIGNAL) {
+	LIGHTS_OFF;
 	currentLight = T_SIGNAL;
 	leds (currentLight, 1);
       }
-      /*
-      // get the signal strength
-      ss = atoi (inBuf[31]);
-      // change the stored signal strength if different
-      if (ss > 0 && currentSS != ss)
-	setBlinkRate (ss);
-      */
-      for (i = n - 1; i < n; i++) {
-	word rssi = (unsigned char)inBuf[i];
-
-	diag ("%d", rssi);
-      }
       
+      // get the signal strength
+      word rssi = (unsigned char) inBuf[n - 1];
+      // change the stored signal strength if different
+      if (rssi > 0 && currentSS != rssi)
+	setBlinkRate (rssi);
+      diag ("RSSI: %d, blinkWait: %d", rssi, blinkWait);
       proceed RECEIVING;
     }
+
 
   state OUT_PUT:
     ser_outf (OUT_PUT, "%d\n\r", n);
@@ -106,16 +99,18 @@ fsm receiver {
 
 fsm blinker {
   initial state TURN_ON:
-  //   diag ("%d", blinkWait);
     if (blinkWait <= 0) {
-      LIGHTS_OFF;
-      leds (2, 1);
+      if (currentLight != NO_SIGNAL) {
+	LIGHTS_OFF;
+	currentLight = NO_SIGNAL;
+	leds (currentLight, 1);
+      }
       delay (512, TURN_ON);
       release;
     }
     else {
       leds (currentLight, 1);
-      delay (blinkWait, TURN_OFF);
+      delay ((blinkWait / 3), TURN_OFF);
       release;
     }
 
@@ -152,6 +147,11 @@ fsm root {
     tcv_control (fd, PHYSOPT_TXON, NULL);
     tcv_control (fd, PHYSOPT_RXON, NULL);
     
+    // initialize current light to red and stay on
+    currentLight = NO_SIGNAL;
+    leds (currentLight, 1);
+
+    // delay random time within 2 seconds to start
     delay (rnd() % 2048, STARTUP);
     release;
 

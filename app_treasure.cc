@@ -23,14 +23,24 @@ char *outBuf, *inBuf;
 #define MSG_SIZE    10
 #define PAC_SIZE    20
 #define HUNTER      "H"
-#define GREEN       1
-#define RED         2
+#define NO_SIGNAL    1
+#define EXPOSED     2
 #define YELLOW      0
 #define LIGHTS_OFF  do {			\
     leds (0, 0);				\
     leds (1, 0);				\
     leds (2, 0);				\
   } while (0)
+
+void setBlinkRate (int);
+
+void setBlinkRate (int rssi) {
+  currentSS = rssi;
+  if (rssi >= 100)
+    blinkWait = (3600 / rssi) * (3600 / rssi);
+  else
+    blinkWait = (4000 / rssi) * (4000 / (200 - rssi));
+}
 
 fsm sender {
   address packet;
@@ -56,18 +66,21 @@ fsm receiver {
 
   state RECEIVED:
     if (strncmp(inBuf + 2, HUNTER, 1) == 0) {
-      if (currentLight != RED) {
+      if (currentLight != EXPOSED) {
 	leds (currentLight, 0);
-	currentLight = RED;
+	currentLight = EXPOSED;
 	leds (currentLight, 2);
       }
     }
+ 
     proceed RECEIVING;
 
   state NOSIGNAL:
-    leds (currentLight, 0);
-    currentLight = GREEN;
-    leds (currentLight, 2);
+    if (currentLight != NO_SIGNAL) {
+      leds (currentLight, 0);
+      currentLight = NO_SIGNAL;
+      leds (currentLight, 2);
+    }
     proceed RECEIVING;
 }
 
@@ -99,7 +112,7 @@ fsm root {
     tcv_control (fd, PHYSOPT_TXON, NULL);
     tcv_control (fd, PHYSOPT_RXON, NULL);
     
-    currentLight = GREEN;
+    currentLight = NO_SIGNAL;
     leds (currentLight, 2);
 
     delay (rnd() % 2048, STARTUP);
