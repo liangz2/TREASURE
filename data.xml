@@ -51,7 +51,7 @@
 	    	<output target="socket"></output>
 	    </leds>
 	</defaults>
-	<node number="0" type="treasure">
+	<node number="0" type="relay">
 	    <location>1.0 4.0</location>
 	</node>
 	<node number="1" type="hunter">
