@@ -46,8 +46,7 @@ void setBlinkRate (int rssi) {
 
 fsm sender {
   address packet;
-
-  initial state SENDSIGNAL:
+    initial state SENDSIGNAL:
     packet = tcv_wnp (SENDSIGNAL, fd, PAC_SIZE);
     tcv_write (packet, outBuf, MSG_SIZE);
     tcv_endp (packet);
@@ -58,9 +57,8 @@ fsm sender {
 
 fsm receiver {
   address packet;
-  int i;
   int n;
-  char c;
+  char who;
   initial state RECEIVING:
     delay (3072, NOSIGNAL);
     packet = tcv_rnp (RECEIVING, fd);
@@ -75,21 +73,23 @@ fsm receiver {
       if (currentLight != T_SIGNAL) {
 	LIGHTS_OFF;
 	currentLight = T_SIGNAL;
-	leds (currentLight, 1);
       }
-      
-      // get the signal strength
-      word rssi = (unsigned char) inBuf[n - 1];
-      // change the stored signal strength if different
-      if (rssi > 0 && currentSS != rssi)
-	setBlinkRate (rssi);
-      diag ("RSSI: %d, blinkWait: %d", rssi, blinkWait);
+    }
+    else if (strncmp(inBuf + 2, RELAY, 1) == 0) {
+      if (currentLight != R_SIGNAL) {
+	LIGHTS_OFF;
+	currentLight = R_SIGNAL;
+      }
+    }
+    else {
       proceed RECEIVING;
     }
-
-
-  state OUT_PUT:
-    ser_outf (OUT_PUT, "%d\n\r", n);
+    // get the signal strength
+    word rssi = (unsigned char) inBuf[n - 1];
+    // change the stored signal strength if different
+    if (rssi > 0 && currentSS != rssi)
+      setBlinkRate (rssi);
+    
     proceed RECEIVING;
 
   state NOSIGNAL:
