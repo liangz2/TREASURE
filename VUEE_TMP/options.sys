@@ -1,5 +1,0 @@
-#define VUEE_LIB_PLUG_NULL
-#ifdef RADIO_USE_LEDS
-#undef RADIO_USE_LEDS
-#endif
-#define RADIO_USE_LEDS 0
