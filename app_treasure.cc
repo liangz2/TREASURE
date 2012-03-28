@@ -10,39 +10,39 @@
 #include "ser.h"
 #include "serf.h"
 #include "form.h"
+#include "treasure_hunt.h"
 
-int fd = -1;
-int sid = 0;
-int channel = 0;
-int power = 10;
-int currentSS = 250;
-int blinkWait = 0;
-int currentLight = -1;
-char *outBuf, *inBuf;
+int hunterInRange = 0;
 
-#define ROLE        "T"
-#define MSG_SIZE    10
-#define PAC_SIZE    20
-#define HUNTER      "H"
-#define NO_SIGNAL    1
-#define EXPOSED     2
-#define YELLOW      0
-#define LIGHTS_OFF  do {			\
-    leds (0, 0);				\
-    leds (1, 0);				\
-    leds (2, 0);				\
-  } while (0)
+#define HUNTER_IN_RANGE  (&hunterInRange)
+#define ROLE             TREASURE
+#define NO_SIGNAL        1
+#define GETTING_CLOSE    2
+#define FAR_AWAY         0
+#define WAIT_HUNTER      1536
 
-void setBlinkRate (int);
+/* timer fsm that keeps track of the wait time according
+ * to the received packet 
+ */
+fsm waitTimer {
+  // reset the timer when the desired packet is received
+  initial state START:
+    when (HUNTER_IN_RANGE, START);
+    delay (WAIT_HUNTER, NOSIGNAL);
+    release;    
 
-void setBlinkRate (int rssi) {
-  currentSS = rssi;
-  if (rssi >= 100)
-    blinkWait = (3600 / rssi) * (3600 / rssi);
-  else
-    blinkWait = (4000 / rssi) * (4000 / (200 - rssi));
+  // when no proper packet is received
+  state NOSIGNAL:
+    if (blinkWait != 0)
+      blinkWait = 0;
+
+    when (HUNTER_IN_RANGE, START);
+    release;
 }
 
+/* sender fsm that sends out the role of this node
+ * every so often
+ */
 fsm sender {
   address packet;
   initial state SENDSIGNAL:
@@ -51,28 +51,30 @@ fsm sender {
     tcv_endp (packet);
 
   state SENT:
-    delay (2048, SENDSIGNAL);
+    delay (SEND_WAIT, SENDSIGNAL);
     release;
 }
 
+/* receiver fsm decides if the received packet is a 
+ * proper one and set the leds
+ */
 fsm receiver {
   address packet;
   int n;
-  initial state RECEIVING:
-    delay (3072, NOSIGNAL);
+  int wait;
+
+  state RECEIVING:
     packet = tcv_rnp (RECEIVING, fd);
     n = tcv_left (packet);
     tcv_read (packet, inBuf, PAC_SIZE);
     tcv_endp (packet);
-    proceed RECEIVED;
-    release;
 
   state RECEIVED:
     if (strncmp(inBuf + 2, HUNTER, 1) == 0) {
-      if (currentLight != EXPOSED) {
-	leds (currentLight, 0);
-	currentLight = EXPOSED;
-	leds (currentLight, 2);
+      if (currentLight != GETTING_CLOSE) {
+	LIGHTS_OFF;
+	currentLight = GETTING_CLOSE;
+	leds (currentLight, BLINK);
       }
       
       // get the signal strength
@@ -80,12 +82,10 @@ fsm receiver {
       // change the stored signal strength if different
       if (rssi > 0 && currentSS != rssi)
 	setBlinkRate (rssi);
+      
+      trigger (HUNTER_IN_RANGE);
     }
  
-    proceed RECEIVING;
-
-  state NOSIGNAL:
-    blinkWait = 0;
     proceed RECEIVING;
 }
 
@@ -123,7 +123,6 @@ fsm root {
     bzero (outBuf, MSG_SIZE);
     bzero (inBuf, PAC_SIZE);
     form (outBuf + 2, ROLE, 1);
-    //    form (outBuf + 3, "%d", ss);
 
     phys_cc1100 (0, PAC_SIZE);
     tcv_plug (0, &plug_null);
@@ -148,9 +147,10 @@ fsm root {
 
   state STARTUP:
     runfsm blinker;
+    runfsm waitTimer;
     runfsm sender;
     runfsm receiver;
-
+    
     finish;
 }
 

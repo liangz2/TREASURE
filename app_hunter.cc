@@ -10,40 +10,40 @@
 #include "ser.h"
 #include "serf.h"
 #include "form.h"
+#include "treasure_hunt.h"
 
-int fd = -1;
-int sid = 0;
-int channel = 0;
-int blinkWait = 0;
-int power = 10;
-int currentSS = 0;
-int currentLight = -1;
-char *outBuf, *inBuf;
+int relayFound = 0;
+int inRange = 0;
 
-#define ROLE        "H"
-#define MSG_SIZE    10
-#define PAC_SIZE    20
-#define TREASURE    "T"
-#define RELAY       "R"
+#define IN_RANGE    (&inRange)
+#define ROLE        HUNTER
 #define T_SIGNAL    1
 #define R_SIGNAL    0
 #define NO_SIGNAL   2
-#define LIGHTS_OFF  do {			\
-    leds (0, 0);				\
-    leds (1, 0);				\
-    leds (2, 0);				\
-  } while (0)
+#define WAIT_SIGNAL 1536
 
-void setBlinkRate (int);
+/* timer fsm that keeps track of the wait time according
+ * to the received packet 
+ */
+fsm waitTimer {
+  // reset the timer when the desired packet is received
+  initial state START:
+    when (IN_RANGE, START);
+    delay (WAIT_SIGNAL, NOSIGNAL);
+    release;    
 
-void setBlinkRate (int rssi) {
-  currentSS = rssi;
-  if (rssi >= 100)
-    blinkWait = (3600 / rssi) * (3600 / rssi);
-  else
-    blinkWait = (4000 / rssi) * (4000 / (200 - rssi));
+  // when no proper packet is received
+  state NOSIGNAL:
+    if (blinkWait != 0)
+      blinkWait = 0;
+
+    when (IN_RANGE, START);
+    release;
 }
 
+/* sender fsm that sends out the role of this node
+ * every so often
+ */
 fsm sender {
   address packet;
     initial state SENDSIGNAL:
@@ -51,50 +51,58 @@ fsm sender {
     tcv_write (packet, outBuf, MSG_SIZE);
     tcv_endp (packet);
 
-    delay (2048, SENDSIGNAL);
+    delay (SEND_WAIT, SENDSIGNAL);
     release;
 }
 
 fsm receiver {
   address packet;
   int n;
-  char who;
+  word rssi;
+  
   initial state RECEIVING:
-    delay (3072, NOSIGNAL);
     packet = tcv_rnp (RECEIVING, fd);
     n = tcv_left (packet);
     tcv_read (packet, inBuf, n);
     tcv_endp (packet);
-    proceed RECEIVED;
-    release;
 
   state RECEIVED:
-    if (strncmp(inBuf + 2, TREASURE, 1) == 0) {
+    if (strncmp(inBuf + 2, TREASURE, 1) == 0 &&
+	relayFound == 1) {
       if (currentLight != T_SIGNAL) {
 	LIGHTS_OFF;
 	currentLight = T_SIGNAL;
       }
+      proceed SETBLINK;
     }
-    else if (strncmp(inBuf + 2, RELAY, 1) == 0) {
+    else if (strncmp(inBuf + 2, RELAY, 1) == 0 &&
+	     relayFound == 0) {
       if (currentLight != R_SIGNAL) {
 	LIGHTS_OFF;
 	currentLight = R_SIGNAL;
       }
+      proceed SETBLINK;
     }
-    else {
-      proceed RECEIVING;
-    }
+    
+    proceed RECEIVING;
+    
+
+  state SETBLINK:
     // get the signal strength
-    word rssi = (unsigned char) inBuf[n - 1];
+    rssi = (unsigned char) inBuf[n - 1];
+    // set the relayFound flag to true if the hunter gets close enough
+    if (rssi >= 230 && relayFound == 0) {
+      relayFound = 1;
+      runfsm sender;
+    }
     // change the stored signal strength if different
     if (rssi > 0 && currentSS != rssi)
       setBlinkRate (rssi);
+
+    trigger (IN_RANGE);
     
     proceed RECEIVING;
 
-  state NOSIGNAL:
-    blinkWait = 0;
-    proceed RECEIVING;
 }
 
 fsm blinker {
@@ -103,13 +111,13 @@ fsm blinker {
       if (currentLight != NO_SIGNAL) {
 	LIGHTS_OFF;
 	currentLight = NO_SIGNAL;
-	leds (currentLight, 1);
+	leds (currentLight, ON);
       }
       delay (512, TURN_ON);
       release;
     }
     else {
-      leds (currentLight, 1);
+      leds (currentLight, ON);
       delay ((blinkWait / 3), TURN_OFF);
       release;
     }
@@ -149,16 +157,16 @@ fsm root {
     
     // initialize current light to red and stay on
     currentLight = NO_SIGNAL;
-    leds (currentLight, 1);
+    leds (currentLight, ON);
 
     // delay random time within 2 seconds to start
     delay (rnd() % 2048, STARTUP);
     release;
 
   state STARTUP:
-    runfsm sender;
     runfsm receiver;
     runfsm blinker;
+    runfsm waitTimer;
 
     finish;
 }

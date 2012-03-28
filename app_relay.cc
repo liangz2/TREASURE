@@ -10,49 +10,45 @@
 #include "ser.h"
 #include "serf.h"
 #include "form.h"
+#include "treasure_hunt.h"
 
-int fd = -1;
-int sid = 0;
-int channel = 0;
-int power = 10;
-int currentSS = 250;
-int blinkWait = 0;
-int currentLight = -1;
-int triggerSend = 0;
-char *outBuf, *inBuf;
+int ptSignal = 0;
 
-#define SEND        (&triggerSend)
-#define ROLE        "R"
-#define MSG_SIZE    10
-#define PAC_SIZE    20
-#define TREASURE    "T"
-#define NO_SIGNAL   2
+#define P_T_SIGNAL  (&ptSignal)
+#define ROLE        RELAY
 #define READY       0
-#define LIGHTS_OFF  do {			\
-    leds (0, 0);				\
-    leds (1, 0);				\
-    leds (2, 0);				\
-  } while (0)
+#define NO_SIGNAL   2
+#define WAIT_SIGNAL 1536
 
-void setBlinkRate (int);
+/* timer fsm that keeps track of the wait time according
+ * to the received packet 
+ */
+fsm waitTimer {
+  // reset the timer when the desired packet is received
+  initial state START:
+    when (P_T_SIGNAL, START);
+    delay (WAIT_SIGNAL, NOSIGNAL);
+    release;    
 
-/* use a function to calculate the flashing interval */
-void setBlinkRate (int rssi) {
-  /* set the current signal strength */
-  currentSS = rssi;
-  /* separate the strength into two to better indicate the distance */
-  if (rssi >= 100)
-    blinkWait = (3600 / rssi) * (3600 / rssi);
-  else
-    blinkWait = (4000 / rssi) * (4000 / (200 - rssi));
+  // when no proper packet is received
+  state NOSIGNAL:
+    if (currentLight != NO_SIGNAL) {
+      LIGHTS_OFF;
+      currentLight = NO_SIGNAL;
+      leds (currentLight, ON);
+    }
+
+    when (P_T_SIGNAL, START);
+    release;
 }
 
-/* sender is a fsm that sends the role of the device every two seconds */
+/* sender fsm that sends out the role of this node
+ * every so often
+ */
 fsm sender {
   address packet;
   initial state SENDWAIT:
-    triggerSend = 0;
-    when (SEND, SENDSIGNAL);
+    when (P_T_SIGNAL, SENDSIGNAL);
     release;
 
   state SENDSIGNAL:
@@ -62,29 +58,26 @@ fsm sender {
     proceed SENDWAIT;
 }
 
-/* receiver is a fsm that changes the status of the device accordingly */
+/* receiver is a fsm that changes the status of the 
+ * device accordingly
+ */
 fsm receiver {
   address packet;
-  int n;
   initial state RECEIVING:
-    delay (3072, NOSIGNAL);
     packet = tcv_rnp (RECEIVING, fd);
-    n = tcv_left (packet);
     tcv_read (packet, inBuf, PAC_SIZE);
     tcv_endp (packet);
-    proceed RECEIVED;
-    release;
-
+    
   state RECEIVED:
     if (strncmp(inBuf + 2, TREASURE, 1) == 0) {
       if (currentLight != READY) {
 	LIGHTS_OFF;
 	currentLight = READY;
-	leds (currentLight, 2);
+	leds (currentLight, BLINK);
       }
       
-      triggerSend = 1;
-      trigger (SEND);
+      // trigger the picked up signal flag
+      trigger (P_T_SIGNAL);
       /*
       // get the signal strength
       word rssi = (unsigned char) inBuf[n - 1];
@@ -95,16 +88,8 @@ fsm receiver {
     }
  
     proceed RECEIVING;
-
-  state NOSIGNAL:
-    if (currentLight != NO_SIGNAL) {
-      LIGHTS_OFF;
-      currentLight = NO_SIGNAL;
-      leds (currentLight, 1);
-    }
-    proceed RECEIVING;
 }
-
+/*
 fsm blinker {
   initial state TURN_ON:
     if (blinkWait <= 0) {
@@ -127,7 +112,7 @@ fsm blinker {
     delay (blinkWait, TURN_ON);
     release;
 }
-
+*/
 fsm root {
   initial state INIT:
     outBuf = (char*) umalloc (MSG_SIZE);
@@ -139,8 +124,7 @@ fsm root {
     bzero (outBuf, MSG_SIZE);
     bzero (inBuf, PAC_SIZE);
     form (outBuf + 2, ROLE, 1);
-    //    form (outBuf + 3, "%d", ss);
-
+  
     phys_cc1100 (0, PAC_SIZE);
     tcv_plug (0, &plug_null);
     fd = tcv_open (NONE, 0, 0);
@@ -157,7 +141,7 @@ fsm root {
     tcv_control (fd, PHYSOPT_RXON, NULL);
     
     currentLight = NO_SIGNAL;
-    leds (currentLight, 1);
+    leds (currentLight, ON);
 
     delay (rnd() % 2048, STARTUP);
     release;
@@ -165,6 +149,7 @@ fsm root {
   state STARTUP:
     runfsm sender;
     runfsm receiver;
+    runfsm waitTimer;
 
     finish;
 }
