@@ -15,14 +15,15 @@
 int relayFound = 0;
 int inRange = 0;
 int better = 0;
+int treasureFound = 0;
 
-#define BETTER      (&better)
-#define IN_RANGE    (&inRange)
-#define ROLE        HUNTER
-#define T_SIGNAL    1
-#define R_SIGNAL    0
-#define NO_SIGNAL   2
-#define WAIT_SIGNAL 1536
+#define BETTER          (&better)
+#define IN_RANGE        (&inRange)
+#define ROLE            HUNTER
+#define T_SIGNAL        1
+#define R_SIGNAL        0
+#define NO_SIGNAL       2
+#define WAIT_SIGNAL     1536
 
 /* timer fsm that keeps track of the wait time according
  * to the received packet 
@@ -88,6 +89,8 @@ fsm receiver {
     tcv_endp (packet);
 
   state RECEIVED:
+    if (treasureFound == 1)
+      proceed RECEIVING;
     if (strncmp(inBuf + 2, TREASURE, 1) == 0 &&
 	relayFound == 1) {
       if (currentLight != T_SIGNAL) {
@@ -116,6 +119,13 @@ fsm receiver {
       relayFound = 1;
       runfsm sender;
     }
+    // winning condition
+    if (rssi >= 230 && treasureFound == 0) {
+      treasureFound = 1;
+      currentLight = T_SIGNAL;
+      killall (sender);
+      finish;
+    }
     // change the stored signal strength if different
     if (rssi >= currentSS || currentSS - rssi <= 3) {
       trigger (BETTER);
@@ -135,7 +145,7 @@ fsm receiver {
  */
 fsm blinker {
   initial state TURN_ON:
-    if (blinkWait <= 0) {
+    if (blinkWait == 0) {
       if (currentLight != NO_SIGNAL) {
 	LIGHTS_OFF;
 	currentLight = NO_SIGNAL;
@@ -143,6 +153,11 @@ fsm blinker {
       }
       delay (512, TURN_ON);
       release;
+    }
+    else if (treasureFound == 1) {
+      LIGHTS_OFF;
+      leds (currentLight, ON);
+      finish;
     }
     else {
       leds (currentLight, ON);
