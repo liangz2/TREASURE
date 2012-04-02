@@ -22,7 +22,6 @@ int better = 0;
 #define GETTING_CLOSE    2
 #define FAR_AWAY         0
 #define WAIT_HUNTER      1536
-#define NO_BSIG_CD       2048
 
 /* timer fsm that keeps track of the wait time according
  * to the received packet 
@@ -93,8 +92,7 @@ fsm receiver {
     if (strncmp(inBuf + 2, HUNTER, 1) == 0) {
       // get the signal strength
       rssi = (unsigned char) inBuf[n - 1];
-      if (rssi >= currentSS || currentSS - rssi <= 2) {
-	diag ("%d", rssi);
+      if (rssi >= currentSS || currentSS - rssi <= 3) {
 	trigger (BETTER);
 	if (rssi != currentSS)
 	  setBlinkRate (rssi);
@@ -146,36 +144,38 @@ fsm blinker {
     release;
 }
 
+/* initializing and start up */
 fsm root {
   initial state INIT:
+    // allocating memory for buffers
     outBuf = (char*) umalloc (MSG_SIZE);
     inBuf = (char*) umalloc (PAC_SIZE);
-
+    // error checking
     if (outBuf == NULL || inBuf == NULL)
       diag ("fail to allocate memory for outBuf or inBuf");
-
+    // initializing buffers
     bzero (outBuf, MSG_SIZE);
     bzero (inBuf, PAC_SIZE);
     form (outBuf + 2, ROLE, 1);
-
+    
     phys_cc1100 (0, PAC_SIZE);
     tcv_plug (0, &plug_null);
     fd = tcv_open (NONE, 0, 0);
-
+    // error checking
     if (fd < 0) {
       diag ("failed to obtain file descriptor");
       finish;
     }
-    
+    // initializing wireless parameter
     tcv_control (fd, PHYSOPT_SETSID, (address) &sid);
     tcv_control (fd, PHYSOPT_SETCHANNEL, (address) &channel);
     tcv_control (fd, PHYSOPT_SETPOWER, (address) &power);
     tcv_control (fd, PHYSOPT_TXON, NULL);
     tcv_control (fd, PHYSOPT_RXON, NULL);
-    
+    // initializing leds
     currentLight = NO_SIGNAL;
     leds (currentLight, 1);
-
+    // delay up to 2 seconds and then start up
     delay (rnd() % 2048, STARTUP);
     release;
 

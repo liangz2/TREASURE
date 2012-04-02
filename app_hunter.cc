@@ -23,7 +23,6 @@ int better = 0;
 #define R_SIGNAL    0
 #define NO_SIGNAL   2
 #define WAIT_SIGNAL 1536
-#define NO_BSIG_CD  2048
 
 /* timer fsm that keeps track of the wait time according
  * to the received packet 
@@ -159,12 +158,13 @@ fsm blinker {
 
 fsm root {
   initial state INIT:
+    // allocating memory for buffers
     outBuf = (char*) umalloc (MSG_SIZE);
     inBuf = (char*) umalloc (PAC_SIZE);
-
+    // error checking
     if (outBuf == NULL || inBuf == NULL)
       diag ("fail to allocate memory for outBuf or inBuf");
-
+    // initializing buffers
     bzero (outBuf, MSG_SIZE);
     bzero (inBuf, PAC_SIZE);
     form (outBuf + 2, ROLE, 1);
@@ -172,12 +172,12 @@ fsm root {
     phys_cc1100 (0, PAC_SIZE);
     tcv_plug (0, &plug_null);
     fd = tcv_open (NONE, 0, 0);
-
+    // error checking
     if (fd < 0) {
       diag ("failed to obtain file descriptor");
       finish;
     }
-    
+    // initializing wireless parameter
     tcv_control (fd, PHYSOPT_SETSID, (address) &sid);
     tcv_control (fd, PHYSOPT_SETCHANNEL, (address) &channel);
     tcv_control (fd, PHYSOPT_SETPOWER, (address) &power);
@@ -188,7 +188,7 @@ fsm root {
     currentLight = NO_SIGNAL;
     leds (currentLight, ON);
 
-    // delay random time within 2 seconds to start
+    // delay up to 2 seconds and then start up
     delay (rnd() % 2048, STARTUP);
     release;
 

@@ -8,7 +8,7 @@
 
 int fd = -1;
 int sid = 0;
-int channel = 0;
+int channel = 7;
 int power = 10;
 int currentSS = 0;
 int blinkWait = 0;
@@ -23,7 +23,8 @@ char *outBuf, *inBuf;
 #define OFF         0
 #define ON          1
 #define BLINK       2
-#define SEND_WAIT   1024
+#define SEND_WAIT   512
+#define NO_BSIG_CD  1536
 #define LIGHTS_OFF  do {			\
     leds (0, 0);				\
     leds (1, 0);				\
