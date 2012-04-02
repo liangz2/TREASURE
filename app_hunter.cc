@@ -14,13 +14,16 @@
 
 int relayFound = 0;
 int inRange = 0;
+int better = 0;
 
+#define BETTER      (&better)
 #define IN_RANGE    (&inRange)
 #define ROLE        HUNTER
 #define T_SIGNAL    1
 #define R_SIGNAL    0
 #define NO_SIGNAL   2
 #define WAIT_SIGNAL 1536
+#define NO_BSIG_CD  2048
 
 /* timer fsm that keeps track of the wait time according
  * to the received packet 
@@ -41,6 +44,22 @@ fsm waitTimer {
     release;
 }
 
+/* this fsm waits 2 seconds for a better signal to come
+ * in, after that it gives up and starts to accept other
+ * signal
+ */
+fsm waitBetterSig {
+  initial state START:
+    when (BETTER, START);
+    delay (NO_BSIG_CD, DONEWAITING);
+    release;
+
+ state DONEWAITING:
+    currentSS = 0;
+    when (BETTER, START);
+    release;
+}
+
 /* sender fsm that sends out the role of this node
  * every so often
  */
@@ -55,6 +74,9 @@ fsm sender {
     release;
 }
 
+/* receiver fsm decides if the received packet is a 
+ * proper one and set the leds
+ */
 fsm receiver {
   address packet;
   int n;
@@ -96,8 +118,11 @@ fsm receiver {
       runfsm sender;
     }
     // change the stored signal strength if different
-    if (rssi > 0 && currentSS != rssi)
-      setBlinkRate (rssi);
+    if (rssi >= currentSS || currentSS - rssi <= 3) {
+      trigger (BETTER);
+      if (rssi != currentSS)
+	setBlinkRate (rssi);
+    }
 
     trigger (IN_RANGE);
     
@@ -105,6 +130,10 @@ fsm receiver {
 
 }
 
+/* blinker fsm controls the led blinking rate according
+ * to the precalculated rate by the setBlinkRate()
+ * function 
+ */
 fsm blinker {
   initial state TURN_ON:
     if (blinkWait <= 0) {
@@ -167,6 +196,7 @@ fsm root {
     runfsm receiver;
     runfsm blinker;
     runfsm waitTimer;
+    runfsm waitBetterSig;
 
     finish;
 }

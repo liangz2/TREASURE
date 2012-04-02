@@ -49,6 +49,7 @@ fsm sender {
   address packet;
   initial state SENDWAIT:
     when (P_T_SIGNAL, SENDSIGNAL);
+    delay (SEND_WAIT, SENDSIGNAL);
     release;
 
   state SENDSIGNAL:
@@ -78,13 +79,6 @@ fsm receiver {
       
       // trigger the picked up signal flag
       trigger (P_T_SIGNAL);
-      /*
-      // get the signal strength
-      word rssi = (unsigned char) inBuf[n - 1];
-      // change the stored signal strength if different
-      if (rssi > 0 && currentSS != rssi)
-	setBlinkRate (rssi);
-      */
     }
  
     proceed RECEIVING;
