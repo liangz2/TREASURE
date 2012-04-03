@@ -38,5 +38,5 @@ void setBlinkRate (int rssi) {
   if (rssi >= 100)
     blinkWait = (3600 / rssi) * (3600 / rssi);
   else
-    blinkWait = (4000 / rssi) * (4000 / (200 - rssi));
+    blinkWait = (4000 / rssi) * (4000 / rssi);
 }

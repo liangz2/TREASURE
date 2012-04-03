@@ -14,6 +14,7 @@
 
 int hunterInRange = 0;
 int better = 0;
+int hunterFound = 0;
 
 #define BETTER  (&better)
 #define HUNTER_IN_RANGE  (&hunterInRange)
@@ -89,7 +90,13 @@ fsm receiver {
     tcv_endp (packet);
 
   state RECEIVED:
+    // if the signal comes from hunter
     if (strncmp(inBuf + 2, HUNTER, 1) == 0) {
+      // if the hunter sends out its place
+      if (atoi(inBuf + 3) > 0) {
+	hunterFound = atoi(inBuf + 3);
+	form (outBuf + 3, "%d", hunterFound);
+      }
       // get the signal strength
       rssi = (unsigned char) inBuf[n - 1];
       if (rssi >= currentSS || currentSS - rssi <= 3) {
@@ -157,6 +164,7 @@ fsm root {
     bzero (outBuf, MSG_SIZE);
     bzero (inBuf, PAC_SIZE);
     form (outBuf + 2, ROLE, 1);
+    form (outBuf + 3, "%d", hunterFound);
     
     phys_cc1100 (0, PAC_SIZE);
     tcv_plug (0, &plug_null);

@@ -16,6 +16,8 @@ int relayFound = 0;
 int inRange = 0;
 int better = 0;
 int treasureFound = 0;
+int place = 0;
+char rxSigFrom;
 
 #define BETTER          (&better)
 #define IN_RANGE        (&inRange)
@@ -70,6 +72,7 @@ fsm sender {
     tcv_write (packet, outBuf, MSG_SIZE);
     tcv_endp (packet);
 
+  state SENT:
     delay (SEND_WAIT, SENDSIGNAL);
     release;
 }
@@ -89,13 +92,21 @@ fsm receiver {
     tcv_endp (packet);
 
   state RECEIVED:
-    if (treasureFound == 1)
+    // if the device has found the treasure
+    if (treasureFound == 1) {
+      // if the determined place is equal to the same number on the treasure
+      if (atoi(inBuf + 3) == place) {
+	killall (sender);
+	finish;
+      }
       proceed RECEIVING;
+    }
     if (strncmp(inBuf + 2, TREASURE, 1) == 0 &&
 	relayFound == 1) {
       if (currentLight != T_SIGNAL) {
 	LIGHTS_OFF;
 	currentLight = T_SIGNAL;
+	rxSigFrom = TREASURE[0];
       }
       proceed SETBLINK;
     }
@@ -104,6 +115,7 @@ fsm receiver {
       if (currentLight != R_SIGNAL) {
 	LIGHTS_OFF;
 	currentLight = R_SIGNAL;
+	rxSigFrom = RELAY[0];
       }
       proceed SETBLINK;
     }
@@ -115,16 +127,15 @@ fsm receiver {
     // get the signal strength
     rssi = (unsigned char) inBuf[n - 1];
     // set the relayFound flag to true if the hunter gets close enough
-    if (rssi >= 230 && relayFound == 0) {
+    if (rssi >= 230 && strncmp(&rxSigFrom, RELAY, 1) == 0) {
       relayFound = 1;
       runfsm sender;
     }
     // winning condition
-    if (rssi >= 230 && treasureFound == 0) {
+    if (rssi >= 230 && strncmp(&rxSigFrom, TREASURE, 1) == 0) {
+      place = atoi(inBuf + 3) + 1;
+      form (outBuf + 3, "%d", place);
       treasureFound = 1;
-      currentLight = T_SIGNAL;
-      killall (sender);
-      finish;
     }
     // change the stored signal strength if different
     if (rssi >= currentSS || currentSS - rssi <= 3) {
@@ -154,9 +165,30 @@ fsm blinker {
       delay (512, TURN_ON);
       release;
     }
+    // if the treasure has been found by this device
     else if (treasureFound == 1) {
       LIGHTS_OFF;
-      leds (currentLight, ON);
+      switch (place) {
+	// first place
+        case 1:
+	  leds (1, ON);
+	  break;
+	// second place
+        case 2:
+	  leds (0, ON);
+	  break;
+	// thrid place
+        case 3:
+	  leds (2, BLINK);
+	  break;
+        // else
+        default:
+	  leds (0, ON);
+	  leds (1, ON);
+	  leds (2, ON);
+	break;
+	// quit this fsm
+      }
       finish;
     }
     else {
